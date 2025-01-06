@@ -76,3 +76,5 @@ NTSTATUS ObReferenceObjectByName(
 	PVOID* Object
 );
 extern POBJECT_TYPE* IoDriverObjectType;
+
+#define INITCODE code_set("INIT")

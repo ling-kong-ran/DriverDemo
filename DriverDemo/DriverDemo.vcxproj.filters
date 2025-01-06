@@ -22,6 +22,9 @@
     <ClCompile Include="DriverDemo.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Tools.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="myasm.asm">
@@ -30,6 +33,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NtDef.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

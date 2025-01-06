@@ -1,87 +1,91 @@
 #include <ntifs.h>
 #include "NtDef.h"
-
-HANDLE ptHandle = 0;
+#include "Tools.h"
 
 #define DEVICE_NAME L"\\Device\\DriverDemo"
 #define SYMBOL_NAME L"\\??\\DriverDemoHack"
+
+#define START 0x800
+#define OPCODE_1 CTL_CODE(FILE_DEVICE_UNKNOWN, START + 0, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 VOID DriverUnload(PDRIVER_OBJECT pDriver) {
 	if (ptHandle) {
 		ZwClose(ptHandle);
 		ptHandle = 0;
 	}
+	UNICODE_STRING symbolName = { 0 };
+	RtlInitUnicodeString(&symbolName, SYMBOL_NAME);
+	IoDeleteSymbolicLink(&symbolName);
+
+	IoDeleteDevice(pDriver->DeviceObject);
 }
 
-// 获取某个驱动对象
-PDRIVER_OBJECT GetDriverObjectByName(PCWSTR name) {
-	DRIVER_OBJECT result = { 0 };
-	UNICODE_STRING ObjectName = { 0 };
-	RtlInitUnicodeString(&ObjectName, name);
-	NTSTATUS ntstatus = ObReferenceObjectByName(
-		&ObjectName,
-		FILE_ALL_ACCESS,
-		NULL,
-		NULL,
-		*IoDriverObjectType,
-		KernelMode,
-		NULL,
-		(PVOID)&result
-	);
-	if (!NT_SUCCESS(ntstatus)) {
-		return NULL;
-	}
-	return &result;
-}
 
-// 隐藏自身
-VOID HideMySelf(PVOID StartContext) {
-	// 设置定时
-	LARGE_INTEGER time = { 0 };
-	time.QuadPart = -10000 * 5000; // 5S
 
-	KeDelayExecutionThread(KernelMode, FALSE, &time);
 
-	PDRIVER_OBJECT pDriver = (PDRIVER_OBJECT)StartContext;
-
-	// 自身断链 由于InLoadOrderLinks第一个模块是自己
-	PLDR_DATA_TABLE_ENTRY pList = (PLDR_DATA_TABLE_ENTRY)pDriver->DriverSection;
-	RemoveEntryList(&pList->InLoadOrderLinks);
-	// 抹除特征 Type DriverSize DriverExtension DriverInit DriverSection
-	pDriver->Type = 0;
-	pDriver->DriverSize = 0;
-	pDriver->DriverExtension = 0;
-	pDriver->DriverInit = 0;
-	pDriver->DriverSection = 0;
-}
-
-// 创建派发
-NTSTATUS CreateDispatch(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
+// 创建设备派发
+NTSTATUS CreateDispatch(PDEVICE_OBJECT deviceObject, PIRP irp) {
 	NTSTATUS status = STATUS_SUCCESS;
 
+	DbgPrint("Open Connect");
 
 
-
-	Irp->IoStatus.Status = 0;
-	Irp->IoStatus.Information = 0;
-	IoCompleteRequest(Irp, IO_NO_INCREMENT);
+	irp->IoStatus.Status = 0;
+	irp->IoStatus.Information = 0;
+	IoCompleteRequest(irp, IO_NO_INCREMENT);
 	return status;
 }
 
-// 关闭派发
-NTSTATUS CloseDispatch(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
+// 关闭设备派发
+NTSTATUS CloseDispatch(PDEVICE_OBJECT deviceObject, PIRP irp) {
 	NTSTATUS status = STATUS_SUCCESS;
 
+	DbgPrint("Close Connect");
 
 
+	irp->IoStatus.Status = 0;
+	irp->IoStatus.Information = 0;
+	IoCompleteRequest(irp, IO_NO_INCREMENT);
+	return status;
+}
 
-	Irp->IoStatus.Status = 0;
-	Irp->IoStatus.Information = 0;
-	IoCompleteRequest(Irp, IO_NO_INCREMENT);
+// 控制设备派发
+NTSTATUS ControlDispatch(PDEVICE_OBJECT deviceObject, PIRP irp) {
+	NTSTATUS status = STATUS_SUCCESS;
+	PVOID pInBuffer = 0;
+	PIO_STACK_LOCATION psl = 0;
+	ULONG inLen = 0;
+	ULONG outLen = 0;
+	ULONG opCode = 0;
+	ULONG read = 0;
+	ULONG write = 0;
+
+	// 获取应用程序发送的数据
+	pInBuffer = irp->AssociatedIrp.SystemBuffer;
+
+	// 获取iRP数据
+	psl = IoGetCurrentIrpStackLocation(irp);
+
+	// 获取传入长度
+	inLen = psl->Parameters.DeviceIoControl.InputBufferLength;
+
+	// 获取返回长度
+	outLen = psl->Parameters.DeviceIoControl.OutputBufferLength;
+
+	// 获取控制码
+	opCode = psl->Parameters.DeviceIoControl.IoControlCode;
+	if (opCode == OPCODE_1) {
+		// todo 调试
+	}
+
+	irp->IoStatus.Status = 0;
+	irp->IoStatus.Information = 0;
+	IoCompleteRequest(irp, IO_NO_INCREMENT);
 	return status;
 }
 
 // 驱动入口函数
+#pragma INITCODE
 NTSTATUS DriverEntry(PDRIVER_OBJECT pDriver, PUNICODE_STRING regPath) {
 	pDriver->DriverUnload = DriverUnload;
 
@@ -92,17 +96,10 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDriver, PUNICODE_STRING regPath) {
 	RtlInitUnicodeString(&deviceName, DEVICE_NAME);
 	RtlInitUnicodeString(&symbolName, SYMBOL_NAME);
 
-	PsCreateSystemThread(
-		&ptHandle,			// 线程句柄 需要通过ZwClose进行关闭
-		THREAD_ALL_ACCESS,	// 线程权限
-		NULL,				// 线程对象属性
-		NULL,				// 进程句柄【输入参数 可选】 填空默认附加到系统进程
-		NULL,				// 客户标识【输入参数 可选】
-		HideMySelf,			// 线程要执行的函数
-		(PVOID)pDriver		// 线程要执行的函数的参数
-	);
+	//OnDriverInit(pDriver);
 
 	PDEVICE_OBJECT pDevice = 0;
+
 
 	status = IoCreateDevice(
 		pDriver, // 驱动对象
@@ -119,7 +116,11 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDriver, PUNICODE_STRING regPath) {
 	// 设置交互方式
 	pDevice->Flags = DO_BUFFERED_IO;
 	// 设置符号链接
-	IoCreateSymbolicLink(&symbolName, &deviceName);
+	status = IoCreateSymbolicLink(&symbolName, &deviceName);
+	if (!NT_SUCCESS(status)) {
+		IoDeleteDevice(pDevice);
+		return STATUS_SUCCESS;
+	}
 	// 设置派遣函数
 	pDriver->MajorFunction[IRP_MJ_CREATE] = CreateDispatch;
 	pDriver->MajorFunction[IRP_MJ_CLOSE] = CloseDispatch;
