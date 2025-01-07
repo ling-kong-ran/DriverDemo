@@ -6,18 +6,20 @@
 #define SYMBOL_NAME L"\\??\\DriverDemoHack"
 
 #define START 0x800
-#define OPCODE_1 CTL_CODE(FILE_DEVICE_UNKNOWN, START + 0, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define OPCODE_1 CTL_CODE(FILE_DEVICE_UNKNOWN, START + 0x0, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define OPCODE_2 CTL_CODE(FILE_DEVICE_UNKNOWN, START + 0x1, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 VOID DriverUnload(PDRIVER_OBJECT pDriver) {
 	if (ptHandle) {
 		ZwClose(ptHandle);
 		ptHandle = 0;
-	}
-	UNICODE_STRING symbolName = { 0 };
-	RtlInitUnicodeString(&symbolName, SYMBOL_NAME);
-	IoDeleteSymbolicLink(&symbolName);
 
-	IoDeleteDevice(pDriver->DeviceObject);
+
+		UNICODE_STRING symbolName = { 0 };
+		RtlInitUnicodeString(&symbolName, SYMBOL_NAME);
+		IoDeleteSymbolicLink(&symbolName);
+		IoDeleteDevice(pDriver->DeviceObject);
+	}
 }
 
 
@@ -57,8 +59,9 @@ NTSTATUS ControlDispatch(PDEVICE_OBJECT deviceObject, PIRP irp) {
 	ULONG inLen = 0;
 	ULONG outLen = 0;
 	ULONG opCode = 0;
-	ULONG read = 0;
-	ULONG write = 0;
+
+
+	DbgBreakPoint();
 
 	// 获取应用程序发送的数据
 	pInBuffer = irp->AssociatedIrp.SystemBuffer;
@@ -74,12 +77,20 @@ NTSTATUS ControlDispatch(PDEVICE_OBJECT deviceObject, PIRP irp) {
 
 	// 获取控制码
 	opCode = psl->Parameters.DeviceIoControl.IoControlCode;
-	if (opCode == OPCODE_1) {
-		// todo 调试
+
+	switch (opCode) {
+	case OPCODE_1:
+		memset(pInBuffer, 0x6, outLen);
+		break;
+	case OPCODE_2:
+		memset(pInBuffer, 0x7, outLen);
+		break;
+	default:
+		break;
 	}
 
 	irp->IoStatus.Status = 0;
-	irp->IoStatus.Information = 0;
+	irp->IoStatus.Information = outLen;
 	IoCompleteRequest(irp, IO_NO_INCREMENT);
 	return status;
 }
@@ -124,6 +135,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDriver, PUNICODE_STRING regPath) {
 	// 设置派遣函数
 	pDriver->MajorFunction[IRP_MJ_CREATE] = CreateDispatch;
 	pDriver->MajorFunction[IRP_MJ_CLOSE] = CloseDispatch;
+	pDriver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = ControlDispatch;
 
 	return STATUS_SUCCESS;
 }
