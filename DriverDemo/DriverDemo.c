@@ -8,11 +8,11 @@
 #define OPCODE_1 CTL_CODE(FILE_DEVICE_UNKNOWN, START + 0x0, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define OPCODE_2 CTL_CODE(FILE_DEVICE_UNKNOWN, START + 0x1, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
-VOID DriverUnload(PDRIVER_OBJECT pDriver) {
-	if (ptHandle) {
-		ZwClose(ptHandle);
-		ptHandle = 0;
+BOOLEAN flag = FALSE;
 
+VOID DriverUnload(PDRIVER_OBJECT pDriver) {
+	if (flag) {
+		flag = FALSE;
 
 		UNICODE_STRING symbolName = { 0 };
 		RtlInitUnicodeString(&symbolName, SYMBOL_NAME);
@@ -20,8 +20,6 @@ VOID DriverUnload(PDRIVER_OBJECT pDriver) {
 		IoDeleteDevice(pDriver->DeviceObject);
 	}
 }
-
-
 
 
 // 创建设备派发
@@ -135,6 +133,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDriver, PUNICODE_STRING regPath) {
 	pDriver->MajorFunction[IRP_MJ_CREATE] = CreateDispatch;
 	pDriver->MajorFunction[IRP_MJ_CLOSE] = CloseDispatch;
 	pDriver->MajorFunction[IRP_MJ_DEVICE_CONTROL] = ControlDispatch;
+
+	flag = TRUE;
 
 	return STATUS_SUCCESS;
 }

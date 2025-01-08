@@ -29,5 +29,3 @@ PRTL_PROCESS_MODULE_INFORMATION GetSystemModuleByName(PUCHAR moduleName, PULONG 
 
 	return result;
 }
-
-HANDLE ptHandle = 0;
