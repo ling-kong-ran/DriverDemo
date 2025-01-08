@@ -1,5 +1,4 @@
 #include <ntifs.h>
-#include "NtDef.h"
 #include "Tools.h"
 
 #define DEVICE_NAME L"\\Device\\DriverDemo"
