@@ -28,7 +28,6 @@ PRTL_PROCESS_MODULE_INFORMATION GetSystemModuleByName(_In_ PUCHAR moduleName, _O
 	ULONG returnLength = 4096;
 	NTSTATUS status = 0;
 
-	Flag:
 	status = ZwQuerySystemInformation(
 		SystemModuleInformation,
 		(PVOID)&pModules,
@@ -36,7 +35,12 @@ PRTL_PROCESS_MODULE_INFORMATION GetSystemModuleByName(_In_ PUCHAR moduleName, _O
 		&returnLength
 	);
 	if (status == STATUS_INFO_LENGTH_MISMATCH) {
-		goto Flag;
+		status = ZwQuerySystemInformation(
+		SystemModuleInformation,
+		(PVOID)&pModules,
+		sizeof(pModules),
+		&returnLength
+	);
 	}
 
 	if (NT_SUCCESS(status)) {
