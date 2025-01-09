@@ -27,11 +27,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="myasm.asm">
-      <Filter>Source Files</Filter>
-    </MASM>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="NtDef.h">
       <Filter>Header Files</Filter>
     </ClInclude>

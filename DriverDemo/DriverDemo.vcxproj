@@ -114,9 +114,6 @@
     <ClCompile Include="Tools.c" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="myasm.asm" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="NtDef.h" />
     <ClInclude Include="Tools.h" />
   </ItemGroup>
