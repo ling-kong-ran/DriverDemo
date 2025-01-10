@@ -23,7 +23,7 @@ PDRIVER_OBJECT GetDriverObjectByName(__in PCWSTR name) {
 }
 
 
-PVOID GetSystemModuleByName(__in PUCHAR moduleName, __out PULONG pModuleSize, __out PSYSTEM_MODULE_INFORMATION * pModulesBuffer) {
+PVOID GetSystemModuleByName(__in PUCHAR moduleName, __out PSYSTEM_MODULE_INFORMATION* pModulesBuffer) {
 	PVOID result = NULL;
 	PSYSTEM_MODULE_INFORMATION pModules = NULL;
 	ULONG returnLength = 0;
@@ -54,7 +54,6 @@ PVOID GetSystemModuleByName(__in PUCHAR moduleName, __out PULONG pModuleSize, __
 			for (ULONG i = 0; i < pModules->Count; i++) {
 				if (strstr(pModules->Module[i].ImageName, moduleName)) {
 					result = &pModules->Module[i];
-					*pModuleSize = returnLength;
 					break;
 				}
 			}
