@@ -1,7 +1,7 @@
 #include "Tools.h"
 
 // 获取某个驱动对象 例如 L"\\Driver\\DriverDemo"
-PDRIVER_OBJECT GetDriverObjectByName(_In_ PCWSTR name) {
+PDRIVER_OBJECT GetDriverObjectByName(__in PCWSTR name) {
 	PDRIVER_OBJECT result = 0;
 	UNICODE_STRING ObjectName = { 0 };
 	RtlInitUnicodeString(&ObjectName, name);
@@ -16,47 +16,51 @@ PDRIVER_OBJECT GetDriverObjectByName(_In_ PCWSTR name) {
 		(PVOID)result
 	);
 	if (!NT_SUCCESS(ntstatus)) {
+		DbgPrint("not find DriverObject!");
 		return NULL;
 	}
 	return result;
 }
 
 
-PRTL_PROCESS_MODULE_INFORMATION GetSystemModuleByName(_In_ PUCHAR moduleName, _Out_ PULONG pModuleSize) {
-	PRTL_PROCESS_MODULE_INFORMATION result = 0;
-	PRTL_PROCESS_MODULES pModules = 0;
-	ULONG returnLength = 4096;
-	NTSTATUS status = 0;
+PVOID GetSystemModuleByName(__in PUCHAR moduleName, __out PULONG pModuleSize, __out PSYSTEM_MODULE_INFORMATION * pModulesBuffer) {
+	PVOID result = NULL;
+	PSYSTEM_MODULE_INFORMATION pModules = NULL;
+	ULONG returnLength = 0;
 
-	status = ZwQuerySystemInformation(
+	NTSTATUS status = ZwQuerySystemInformation(
 		SystemModuleInformation,
-		(PVOID)&pModules,
-		sizeof(pModules),
+		(PVOID)pModules,
+		0,
 		&returnLength
 	);
+
 	if (status == STATUS_INFO_LENGTH_MISMATCH) {
-		status = ZwQuerySystemInformation(
-		SystemModuleInformation,
-		(PVOID)&pModules,
-		sizeof(pModules),
-		&returnLength
-	);
-	}
-
-	if (NT_SUCCESS(status)) {
-		pModules = (PRTL_PROCESS_MODULES)ExAllocatePool(NonPagedPool, returnLength);
+		pModules = (PSYSTEM_MODULE_INFORMATION)ExAllocatePool(NonPagedPool, returnLength);
 
 		if (!pModules) {
-			return result;
+			DbgPrint("allocate memeory error!");
+			return NULL;
 		}
 
-		for (ULONG i = 0; i < pModules->NumberOfModules; i++) {
-			if (strstr(pModules->Modules[i].FullPathName, moduleName)) {
-				result = &pModules->Modules[i];
-				*pModuleSize = returnLength;
-				break;
+		status = ZwQuerySystemInformation(
+			SystemModuleInformation,
+			(PVOID)pModules,
+			returnLength,
+			&returnLength
+		);
+
+		if (NT_SUCCESS(status)) {
+			for (ULONG i = 0; i < pModules->Count; i++) {
+				if (strstr(pModules->Module[i].ImageName, moduleName)) {
+					result = &pModules->Module[i];
+					*pModuleSize = returnLength;
+					break;
+				}
 			}
 		}
+
+		*pModulesBuffer = pModules;
 	}
 
 	return result;

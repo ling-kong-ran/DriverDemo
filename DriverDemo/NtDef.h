@@ -335,27 +335,41 @@ typedef enum _SYSTEM_INFORMATION_CLASS
 } SYSTEM_INFORMATION_CLASS;
 
 // Module information
-
-typedef struct _RTL_PROCESS_MODULE_INFORMATION
-{
-    PVOID Section;
-    PVOID MappedBase;
-    PVOID ImageBase;
-    ULONG ImageSize;
+typedef struct _SYSTEM_MODULE_INFORMATION_ENTRY64 {
+    ULONG Reserved[4];
+    PVOID Base;
+    ULONG Size;
     ULONG Flags;
-    USHORT LoadOrderIndex;
-    USHORT InitOrderIndex;
+    USHORT Index;
+    USHORT Unknown;
     USHORT LoadCount;
-    USHORT OffsetToFileName;
-    UCHAR FullPathName[256];
-} RTL_PROCESS_MODULE_INFORMATION, * PRTL_PROCESS_MODULE_INFORMATION;
+    USHORT ModuleNameOffset;
+    CHAR ImageName[256];
+} SYSTEM_MODULE_INFORMATION_ENTRY64, * PSYSTEM_MODULE_INFORMATION_ENTRY64;
 
 
-typedef struct _RTL_PROCESS_MODULES
+typedef struct _SYSTEM_MODULE_INFORMATION_ENTRY32 {
+    ULONG Reserved[2];
+    PVOID Base;
+    ULONG Size;
+    ULONG Flags;
+    USHORT Index;
+    USHORT Unknown;
+    USHORT LoadCount;
+    USHORT ModuleNameOffset;
+    CHAR ImageName[256];
+} SYSTEM_MODULE_INFORMATION_ENTRY32, * PSYSTEM_MODULE_INFORMATION_ENTRY32;
+
+typedef struct _SYSTEM_MODULE_INFORMATION
 {
-    ULONG NumberOfModules;
-    RTL_PROCESS_MODULE_INFORMATION Modules[1];
-} RTL_PROCESS_MODULES, * PRTL_PROCESS_MODULES;
+    ULONG Count;//内核中以加载的模块的个数
+#ifdef _AMD64_
+    SYSTEM_MODULE_INFORMATION_ENTRY64 Module[1];
+#else
+    SYSTEM_MODULE_INFORMATION_ENTRY32 Module[1];
+#endif
+
+} SYSTEM_MODULE_INFORMATION, * PSYSTEM_MODULE_INFORMATION;OCESS_MODULES;
 
 NTSTATUS
 NTAPI

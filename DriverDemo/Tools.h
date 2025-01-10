@@ -3,4 +3,4 @@
 PDRIVER_OBJECT GetDriverObjectByName(__in PCWSTR name);
 
 
-PRTL_PROCESS_MODULE_INFORMATION GetSystemModuleByName(__in PUCHAR moduleName, __out PULONG pModuleSize);
+PVOID GetSystemModuleByName(__in PUCHAR moduleName, __out PULONG pModuleSize, __out PSYSTEM_MODULE_INFORMATION* pModulesBuffer);
