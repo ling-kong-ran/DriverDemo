@@ -87,7 +87,7 @@ ULONG GetSectionRvaByName(__in PVOID pImageBase, __in PCSTR pSectionName, __out 
 }
 
 // 定位特征码
-PVOID SearchCode(__in PUCHAR pModuleName, __in PUCHAR pSectionName, __in PUCHAR szCode) {
+PVOID SearchCode(__in PUCHAR pModuleName, __in PUCHAR pSectionName, __in PUCHAR szCode, __in ULONG szCodeSize) {
 	// 1.获取指定模块的信息
 	PSYSTEM_MODULE_INFORMATION pModules = NULL;
 	PSYSTEM_MODULE_INFORMATION_ENTRY pModule = GetSystemModuleByName(pModuleName, &pModules);
@@ -95,18 +95,42 @@ PVOID SearchCode(__in PUCHAR pModuleName, __in PUCHAR pSectionName, __in PUCHAR 
 		DbgPrint("not find module!");
 		return NULL;
 	}
+
 	PVOID pImageBase = pModule->Base;
 
 
 	ULONG sectionSize = 0;
 	// 获取节区偏移
 	ULONG pSectionBaseRva = GetSectionRvaByName(pImageBase, pSectionName, &sectionSize);
-	
+
 	// 起始地址
-	LONGLONG startAddr = (LONGLONG)pImageBase + pSectionBaseRva;
+	PUCHAR startAddr = !pSectionBaseRva ? (PUCHAR)pImageBase : (PUCHAR)pImageBase + pSectionBaseRva;
 	// 终点地址
-	LONGLONG endAddr = startAddr + sectionSize;
+	PUCHAR endAddr = !pSectionBaseRva ? (PUCHAR)startAddr + sectionSize + pModule->Size : (PUCHAR)startAddr + sectionSize;
 
-	// 3.定位特征
+	// 2.在起始地址和终点地址之间 定位特征 通配符为? 该通配符仅占一个char 例如 "A?B"
 
+	for (size_t p = startAddr; p < endAddr; p++) {
+		char c = *(char*)p;
+		// 匹配上第一个字符，如果第一个字符是通配符?也认为匹配上第一个字符
+		if (c == szCode[0] || szCode[0] == '?') {
+			// 比较后续字符
+			PUCHAR p1 = p; // 内存指针
+			PUCHAR p2 = szCode; // 特征码指针
+			// 记录已匹配的长度
+			ULONG matchSize = 0;
+			while (matchSize < szCodeSize && (p1 < endAddr) && (*p1 == *p2 || *p2 == '?')) {
+				p1++;
+				p2++;
+				matchSize++;
+			}
+
+			if (matchSize == szCodeSize) {
+				// 匹配成功
+				return p;
+			}
+		}
+	}
+
+	return NULL;
 }
